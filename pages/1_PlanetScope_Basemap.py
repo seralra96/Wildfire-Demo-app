@@ -17,7 +17,7 @@ st.set_page_config(layout="wide")
 
 # Customize the sidebar
 markdown = """
-This is a test app for PIP Challenge
+Planet Basemaps leverage cutting-edge software together with daily global satellite imagery to create visually consistent and scientifically accurate mosaics. Gain insights over broad areas and diverse geographies, and empower time series analysis and data analytics with Planet’s Global and Select Basemaps.
 """
 
 st.sidebar.title("About")
@@ -28,8 +28,8 @@ st.sidebar.image(logo)
 st.title("Before and after event with PS Basemaps")
 
 # Add sliders for opacity
-opacity_before = st.sidebar.slider("Select opacity for the 'Before event' basemap", 0.0, 1.0, 0.5)
-opacity_after = st.sidebar.slider("Select opacity for the 'After event' basemap", 0.0, 1.0, 0.5)
+#opacity_before = st.sidebar.slider("Select opacity for the 'Before event' basemap", 0.0001, 1.0, 0.5)
+opacity_after = st.sidebar.slider("Select opacity for the 'After event' basemap", 0.0001, 1.0, 0.0)
 
 with st.expander("See source code"):
     with st.echo():
@@ -37,7 +37,7 @@ with st.expander("See source code"):
         m.add_tile_layer(
             url="http://localhost:5000/tiles/global_monthly_2024_08_mosaic/gmap/{z}/{x}/{y}.png",
             name="Before event",
-            opacity=opacity_before,
+            #opacity=opacity_before,
             attribution="© Planet Labs"
         )
         m.add_tile_layer(

@@ -2,6 +2,8 @@ streamlit
 leafmap
 ipyleaflet
 ipywidgets
-flask
+Flask
 requests
 toml
+sentinelhub
+plotly

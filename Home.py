@@ -4,7 +4,7 @@ st.set_page_config(page_title="Wildfire Monitoring", layout="wide")
 
 # Customize the sidebar
 markdown = """
-This is a test app for PIP Challenge
+This is a test app for PIP Challenge 2024. The app demonstrates how to monitor wildfires using satellite data.
 """
 
 st.sidebar.title("About")
@@ -62,7 +62,10 @@ with st.expander("See source code"):
         else:
             print("No images found to create the GIF.")""")
         
-st.text("2024-09-16")
+st.title("2024-09-16")
+st.title("Smoke in South America")
 st.image("media/animation1.gif")
+st.title("Center South America")
 st.image("media/animation2.gif")
+st.title("How Fire spreads")
 st.image("media/animation3.gif")
