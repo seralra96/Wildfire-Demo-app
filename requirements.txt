@@ -2,8 +2,9 @@ streamlit
 leafmap
 ipyleaflet
 ipywidgets
-Flask
 requests
 toml
 sentinelhub
 plotly
+fastapi
+uvicorn
