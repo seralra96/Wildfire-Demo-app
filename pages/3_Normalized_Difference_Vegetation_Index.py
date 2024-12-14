@@ -1,5 +1,5 @@
 import streamlit as st
-import plotly.express as px
+import plotly.graph_objects as go
 from sentinelhub import SHConfig, SentinelHubStatistical, DataCollection, BBox, CRS
 import pandas as pd
 
@@ -52,57 +52,91 @@ function evaluatePixel(sample) {{
 }}
 """
 
-# Define the request
-request = SentinelHubStatistical(
-    aggregation={
-        "timeRange": {
-            "from": time_interval[0],
-            "to": time_interval[1]
+# Define a function to get the data and cache the response
+@st.cache_data
+def get_statistical_data_ndvi():
+    request = SentinelHubStatistical(
+        aggregation={
+            "timeRange": {
+                "from": time_interval[0],
+                "to": time_interval[1]
+            },
+            "aggregationInterval": {
+                "of": "P1D"
+            },
+            "evalscript": evalscript
         },
-        "aggregationInterval": {
-            "of": "P1D"
-        },
-        "evalscript": evalscript
-    },
-    input_data=[
-        {
-            "type": DataCollection.SENTINEL2_L2A.api_id,
-            "dataFilter": {
-                "timeRange": {
-                    "from": time_interval[0],
-                    "to": time_interval[1]
+        input_data=[
+            {
+                "type": DataCollection.SENTINEL2_L2A.api_id,
+                "dataFilter": {
+                    "timeRange": {
+                        "from": time_interval[0],
+                        "to": time_interval[1]
+                    }
                 }
             }
-        }
-    ],
-    bbox=bbox,
-    config=config
-)
+        ],
+        bbox=bbox,
+        config=config
+    )
+    return request.get_data()
 
 # Get the data
-response = request.get_data()
+response = get_statistical_data_ndvi()
 
 # Extract the data
 dates = []
 values = []
+std_devs = []
 for interval in response[0]['data']:
     dates.append(interval['interval']['to'])
     values.append(interval['outputs']['default']['bands']['B0']['stats']['mean'])
+    std_devs.append(interval['outputs']['default']['bands']['B0']['stats']['stDev'])
 
 # Create a DataFrame
-df = pd.DataFrame({'Date': dates, 'NDVI': values})
+df = pd.DataFrame({'Date': dates, 'NDVI': values, 'StdDev': std_devs})
 
 # Ensure the 'NDVI' column contains only numeric values
 df['NDVI'] = pd.to_numeric(df['NDVI'], errors='coerce')
+df['StdDev'] = pd.to_numeric(df['StdDev'], errors='coerce')
+
 
 # Filter out NaN values
 df = df.dropna()
 
-# Create a Plotly figure
-fig = px.line(df, x='Date', y='NDVI', title='NDVI Over Time')
+# Create upper and lower bounds for the shaded region
+df['Upper'] = df['NDVI'] + df['StdDev']
+df['Lower'] = df['NDVI'] - df['StdDev']
+
+# Create a Plotly figure with shaded region for standard deviation
+fig = go.Figure()
+
+# Add the shaded region
+fig.add_trace(go.Scatter(
+    x=pd.concat([df['Date'], df['Date'][::-1]]),
+    y=pd.concat([df['Upper'], df['Lower'][::-1]]),
+    fill='toself',
+    fillcolor='rgba(0, 100, 80, 0.2)',
+    line=dict(color='rgba(255,255,255,0)'),
+    hoverinfo="skip",
+    showlegend=False
+))
+
+# Add the NDVI line
+fig.add_trace(go.Scatter(
+    x=df['Date'],
+    y=df['NDVI'],
+    mode='lines',
+    name='NDVI',
+    line=dict(color='rgb(0, 100, 80)')
+))
+
+# Update layout
+fig.update_layout(title='NDVI Over Time with Standard Deviation', xaxis_title='Date', yaxis_title='NDVI')
 
 # Display the figure in Streamlit
-st.title('NDVI Over Time')
+st.title('NDVI Over Time with Standard Deviation')
 st.plotly_chart(fig)
 
 # Debugging: Print the DataFrame to inspect the data

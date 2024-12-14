@@ -1,5 +1,5 @@
 import streamlit as st
-import plotly.express as px
+import plotly.graph_objects as go
 from sentinelhub import SHConfig, SentinelHubStatistical, DataCollection, BBox, CRS
 import pandas as pd
 
@@ -55,57 +55,90 @@ function evaluatePixel(sample) {{
 }}
 """
 
-# Define the request
-request = SentinelHubStatistical(
-    aggregation={
-        "timeRange": {
-            "from": time_interval[0],
-            "to": time_interval[1]
+# Define a function to get the data and cache the response
+@st.cache_data
+def get_statistical_data_nbr():
+    request = SentinelHubStatistical(
+        aggregation={
+            "timeRange": {
+                "from": time_interval[0],
+                "to": time_interval[1]
+            },
+            "aggregationInterval": {
+                "of": "P1D"
+            },
+            "evalscript": evalscript
         },
-        "aggregationInterval": {
-            "of": "P1D"
-        },
-        "evalscript": evalscript
-    },
-    input_data=[
-        {
-            "type": DataCollection.SENTINEL2_L2A.api_id,
-            "dataFilter": {
-                "timeRange": {
-                    "from": time_interval[0],
-                    "to": time_interval[1]
+        input_data=[
+            {
+                "type": DataCollection.SENTINEL2_L2A.api_id,
+                "dataFilter": {
+                    "timeRange": {
+                        "from": time_interval[0],
+                        "to": time_interval[1]
+                    }
                 }
             }
-        }
-    ],
-    bbox=bbox,
-    config=config
-)
+        ],
+        bbox=bbox,
+        config=config
+    )
+    return request.get_data()
 
 # Get the data
-response = request.get_data()
+response = get_statistical_data_nbr()
 
 # Extract the data
 dates = []
 values = []
+std_devs = []
 for interval in response[0]['data']:
     dates.append(interval['interval']['to'])
     values.append(interval['outputs']['default']['bands']['B0']['stats']['mean'])
+    std_devs.append(interval['outputs']['default']['bands']['B0']['stats']['stDev'])
 
 # Create a DataFrame
-df = pd.DataFrame({'Date': dates, 'Burn Ratio': values})
+df = pd.DataFrame({'Date': dates, 'Burn Ratio': values, 'StdDev': std_devs})
 
 # Ensure the 'Burn Ratio' column contains only numeric values
 df['Burn Ratio'] = pd.to_numeric(df['Burn Ratio'], errors='coerce')
+df['StdDev'] = pd.to_numeric(df['StdDev'], errors='coerce')
 
 # Filter out NaN values
 df = df.dropna()
 
-# Create a Plotly figure
-fig = px.line(df, x='Date', y='Burn Ratio', title='Burn Ratio Index Over Time')
+# Create upper and lower bounds for the shaded region
+df['Upper'] = df['Burn Ratio'] + df['StdDev']
+df['Lower'] = df['Burn Ratio'] - df['StdDev']
+
+# Create a Plotly figure with shaded region for standard deviation
+fig = go.Figure()
+
+# Add the shaded region
+fig.add_trace(go.Scatter(
+    x=pd.concat([df['Date'], df['Date'][::-1]]),
+    y=pd.concat([df['Upper'], df['Lower'][::-1]]),
+    fill='toself',
+    fillcolor='rgba(255, 165, 0, 0.2)',  # Orange color with transparency
+    line=dict(color='rgba(255,255,255,0)'),
+    hoverinfo="skip",
+    showlegend=False
+))
+
+# Add the Burn Ratio line
+fig.add_trace(go.Scatter(
+    x=df['Date'],
+    y=df['Burn Ratio'],
+    mode='lines',
+    name='Burn Ratio',
+    line=dict(color='rgb(255, 165, 0)')  # Orange color
+))
+
+# Update layout
+fig.update_layout(title='Burn Ratio Over Time with Standard Deviation', xaxis_title='Date', yaxis_title='Burn Ratio')
 
 # Display the figure in Streamlit
-st.title('Burn Ratio Index Over Time')
+st.title('Burn Ratio Over Time with Standard Deviation')
 st.plotly_chart(fig)
 
 # Debugging: Print the DataFrame to inspect the data

@@ -1,5 +1,5 @@
 import streamlit as st
-import plotly.express as px
+import plotly.graph_objects as go
 from sentinelhub import SHConfig, SentinelHubStatistical, DataCollection, BBox, CRS
 import pandas as pd
 
@@ -52,57 +52,90 @@ function evaluatePixel(sample) {{
 }}
 """
 
-# Define the request
-request = SentinelHubStatistical(
-    aggregation={
-        "timeRange": {
-            "from": time_interval[0],
-            "to": time_interval[1]
+# Define a function to get the data and cache the response
+@st.cache_data
+def get_statistical_data_bai():
+    request = SentinelHubStatistical(
+        aggregation={
+            "timeRange": {
+                "from": time_interval[0],
+                "to": time_interval[1]
+            },
+            "aggregationInterval": {
+                "of": "P1D"
+            },
+            "evalscript": evalscript
         },
-        "aggregationInterval": {
-            "of": "P1D"
-        },
-        "evalscript": evalscript
-    },
-    input_data=[
-        {
-            "type": DataCollection.SENTINEL2_L2A.api_id,
-            "dataFilter": {
-                "timeRange": {
-                    "from": time_interval[0],
-                    "to": time_interval[1]
+        input_data=[
+            {
+                "type": DataCollection.SENTINEL2_L2A.api_id,
+                "dataFilter": {
+                    "timeRange": {
+                        "from": time_interval[0],
+                        "to": time_interval[1]
+                    }
                 }
             }
-        }
-    ],
-    bbox=bbox,
-    config=config
-)
+        ],
+        bbox=bbox,
+        config=config
+    )
+    return request.get_data()
 
 # Get the data
-response = request.get_data()
+response = get_statistical_data_bai()
 
 # Extract the data
 dates = []
 values = []
+std_devs = []
 for interval in response[0]['data']:
     dates.append(interval['interval']['to'])
     values.append(interval['outputs']['default']['bands']['B0']['stats']['mean'])
+    std_devs.append(interval['outputs']['default']['bands']['B0']['stats']['stDev'])
 
 # Create a DataFrame
-df = pd.DataFrame({'Date': dates, 'BAI': values})
+df = pd.DataFrame({'Date': dates, 'BAI': values, 'StdDev': std_devs})
 
 # Ensure the 'BAI' column contains only numeric values
 df['BAI'] = pd.to_numeric(df['BAI'], errors='coerce')
+df['StdDev'] = pd.to_numeric(df['StdDev'], errors='coerce')
 
 # Filter out NaN values
 df = df.dropna()
 
-# Create a Plotly figure
-fig = px.line(df, x='Date', y='BAI', title='Burn Area Index Over Time')
+# Create upper and lower bounds for the shaded region
+df['Upper'] = df['BAI'] + df['StdDev']
+df['Lower'] = df['BAI'] - df['StdDev']
+
+# Create a Plotly figure with shaded region for standard deviation
+fig = go.Figure()
+
+# Add the shaded region
+fig.add_trace(go.Scatter(
+    x=pd.concat([df['Date'], df['Date'][::-1]]),
+    y=pd.concat([df['Upper'], df['Lower'][::-1]]),
+    fill='toself',
+    fillcolor='rgba(255, 0, 0, 0.2)',  # Red color with transparency
+    line=dict(color='rgba(255,255,255,0)'),
+    hoverinfo="skip",
+    showlegend=False
+))
+
+# Add the BAI line
+fig.add_trace(go.Scatter(
+    x=df['Date'],
+    y=df['BAI'],
+    mode='lines',
+    name='BAI',
+    line=dict(color='rgb(255, 0, 0)')  # Red color
+))
+
+# Update layout
+fig.update_layout(title='Burn Area Index (BAI) Over Time with Standard Deviation', xaxis_title='Date', yaxis_title='BAI')
 
 # Display the figure in Streamlit
-st.title('Burn Area Index Over Time')
+st.title('Burn Area Index (BAI) Over Time with Standard Deviation')
 st.plotly_chart(fig)
 
 # Debugging: Print the DataFrame to inspect the data
