@@ -7,7 +7,7 @@ st.set_page_config(layout="wide")
 
 # Customize the sidebar
 markdown = """
-In the simplest terms possible, the Normalized Difference Vegetation Index (NDVI) measures the greenness and the density of the vegetation captured in a satellite image. Healthy vegetation has a very characteristic spectral reflectance curve which we can benefit from by calculating the difference between two bands – visible red and near-infrared. NDVI is that difference expressed as a number – ranging from -1 to 1.
+Statistics From: (NDVI, NDR, BAI)
 """
 
 st.sidebar.title("About")
