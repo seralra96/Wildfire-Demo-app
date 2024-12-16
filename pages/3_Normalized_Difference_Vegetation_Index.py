@@ -22,6 +22,9 @@ config.instance_id = st.secrets["sentinelhub"]["instance_id"]
 config.sh_client_id = st.secrets["sentinelhub"]["client_id"]
 config.sh_client_secret = st.secrets["sentinelhub"]["client_secret"]
 
+# Display the figure in Streamlit
+st.title('NDVI Over Time with Standard Deviation')
+
 with st.expander("See source code"):
     with st.echo():
         # Define the area of interest and time range
@@ -137,8 +140,7 @@ with st.expander("See source code"):
         # Update layout
         fig.update_layout(title='NDVI Over Time with Standard Deviation', xaxis_title='Date', yaxis_title='NDVI')
 
-# Display the figure in Streamlit
-st.title('NDVI Over Time with Standard Deviation')
+
 st.plotly_chart(fig)
 
 # Debugging: Print the DataFrame to inspect the data
