@@ -137,9 +137,9 @@ with st.expander("See source code"):
         # Update layout
         fig.update_layout(title='NDVI Over Time with Standard Deviation', xaxis_title='Date', yaxis_title='NDVI')
 
-        # Display the figure in Streamlit
-        st.title('NDVI Over Time with Standard Deviation')
-        st.plotly_chart(fig)
+# Display the figure in Streamlit
+st.title('NDVI Over Time with Standard Deviation')
+st.plotly_chart(fig)
 
-        # Debugging: Print the DataFrame to inspect the data
-        st.write(df)
+# Debugging: Print the DataFrame to inspect the data
+st.write(df)
